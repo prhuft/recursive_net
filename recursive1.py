@@ -39,6 +39,12 @@ class Cost(object):
 		"""Returns the error delta for the output layer L."""
 	
 		return (a-y)
+		
+class Criterion(object):
+
+	@staticmethod
+	
+	@staticmethod
 
 #### The neural network 
 class Network(object):
@@ -111,7 +117,7 @@ def b10_to_b2(number, bits):
 			
 	return result
 	
-def input_to_num(x): # Why this not working????
+def input_to_num(x): # Why this no working????
 	"""Converts input value array to base 10 float with one decimal point. 
 	For example, [.8, .3, .1, .6] would become 831.6. The last value in the
 	array is assumed to be the tenths place."""
