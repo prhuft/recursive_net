@@ -22,6 +22,7 @@ Training: The network will not be trained by showing it a bunch of x y pairs
 import random
 import numpy as np
 from matplotlib import pyplot as plt
+from os import system as s
 
 #### The cost function and its 
 class Cost(object):
@@ -38,7 +39,6 @@ class Cost(object):
 	@staticmethod
 	def delta(a, y):
 		"""Returns the error delta for the output layer L."""
-		print("a:, y:",a,y)
 		return (a-y)
 
 #### The output criterion
@@ -72,8 +72,11 @@ class Criterion(object):
 		near 1, a_L depends highly on the previous output. When the network
 		is far off, i.e. ``kappa`` near 0, a_L will be mostly random."""
 		
-		# Note that a_L is in [0,1]
+		# Note that a_L is in [0,1] 
+		
+		# a_r is an array. are we trying to add list to np.array?
 		a_L = .5*((1-kappa)*Criterion.a_r(len(a_L)) + kappa*a_L)
+	
 		return a_L
 	
 	@staticmethod
@@ -128,16 +131,13 @@ class Network(object):
 		are only used for outputs of previous layers. """
 		
 		self.biases = [np.random.randn(y,1) for y in self.sizes[1:]]
-		
-		# no. of rows = no. of neurons in layer l+1, 
-		# no. of cols = no. of neurons in layer l
-		self.weights = [np.random.randn(y,x) for x,y in zip(self.sizes[:-1],
-						self.sizes[1:])] 
+		self.weights = [np.random.randn(y,x) 
+						for x,y in zip(self.sizes[:-1],self.sizes[1:])] 
 	
 	def feedforward(self, a):
 		"""Return the output of the neural network for an input a."""
 		for b, w in zip(self.biases, self.weights):
-			a = sigmoid(np.dot(w, a)+b) # TODO def sigmoid
+			a = sigmoid(np.dot(w, a)+b)
 		return a
 		
 	def SGD(self, eta, epochs, epoch_size, lmbda = 0.0):
@@ -152,22 +152,20 @@ class Network(object):
 		
 		# Loop through the training epochs
 		for m in range(0, epochs):
-			for n in range(0, epoch_size):
+			self.kappas = []				
+			# Start the epoch at the initial (x,y) input
+			input0 = np.append(self.x0, self.y0)
+			#print("input0: ", input0)
 			
-				self.kappas = []				
-				# Start the epoch at the initial (x,y) input
-				input0 = np.append(self.x0, self.y0)
-				#print("input0: ", input0)
-				
-				# Update the weights and biases after running a single input
-				self.update(input0, epoch_size, eta, lmbda, epochs)
-				
-				# How'd we do? 
-				plot_kappa(self.kappas)
+			# Update the weights and biases after running a single input
+			self.update(input0, epoch_size, eta, lmbda, epochs)
+			
+			# How'd we do? 
+			plot_kappa(self.kappas)
 			
 	def update(self, init_input, epoch_size, eta, lmbda, epochs):
 		"""Update the network's weights and biases by applying gradient
-        descent using backpropagation over a single epoch, i.e. ``epoch_size``
+		descent using backpropagation over a single epoch, i.e. ``epoch_size``
 		iterations. Recall there is no training data; subsequent inputs
 		are born of previous outputs. ``eta`` is the learning rate, ``lmbda`` is
 		the regularization parameter, ``epochs`` is the total number of epochs,
@@ -181,8 +179,8 @@ class Network(object):
 		
 		for i in range(0, epoch_size):
 		
-			# The current input and output standard. Note that self.a_L 
-			# and self.kappa are updated in self.backprop
+			# The current output standard. Note that self.a_L and self.kappa are
+			# updated in self.backprop
 			
 			output_standard = Criterion.a_L(self.kappa, self.a_L)
 			#print("output_std: ", output_standard)
@@ -194,10 +192,10 @@ class Network(object):
 			# Update the input
 			input = Criterion.new_input(self.a_L)
 			
-        # self.weights = [(1-eta*(lmbda/n))*w-(eta/epoch_size)*nw
-                        # for w, nw in zip(self.weights, nabla_w)]
-        # self.biases = [b-(eta/epoch_size)*nb
-                       # for b, nb in zip(self.biases, nabla_b)]		
+		self.weights = [(1-eta*(lmbda/n))*w-(eta/epoch_size)*nw
+						for w, nw in zip(self.weights, nabla_w)]
+		self.biases = [b-(eta/epoch_size)*nb
+						for b, nb in zip(self.biases, nabla_b)]		
 		
 	def backprop(self, x, y):
 		"""Return a tuple ``(nabla_b, nabla_w)`` representing the
@@ -205,26 +203,48 @@ class Network(object):
 		``nabla_w`` are layer-by-layer lists of numpy arrays, similar
 		to ``self.biases`` and ``self.weights``."""
 		
-		print("input: ", x)
-		print("output_std", y)
+		# print("input: ", x)
+		# print("output_std", y)
 		
 		nabla_b = [np.zeros(b.shape) for b in self.biases]
 		nabla_w = [np.zeros(w.shape) for w in self.weights]
-        # feedforward
+		
+		# feedforward
 		activation = x
 		activations = [activation] # list to store all the activations, layer by layer
 		zs = [] # list to store all the input vectors, layer by layer
+		
 		for b, w in zip(self.biases, self.weights):
-			z = np.dot(w, activation)+b
+			# print("w = ", w)
+			# print("a = ", activation)
+			# print("b = ", b)
+			# print("w*a = ", np.dot(w,activation))
+			wa = np.dot(w,activation)
+			z = []
+			for W,B in zip(wa,b):
+				z.append((W+B)[0])
+			z = np.array(z)	
+			
+			#z = np.dot(w,activation) + b
+			print("z = ", z)
+		
 			zs.append(z)
 			activation = sigmoid(z)
-			activations.append(activation)
-        # backward pass
-		delta = (self.cost).delta(activations[-1], y.transpose())
-		nabla_b[-1] = delta
-		nabla_w[-1] = np.dot(delta, activations[-2].transpose())
+			activations.append(activation)		
 		
-		for l in xrange(2, self.num_layers):
+		# backward pass
+		delta = (self.cost).delta(activations[-1], y)
+		delta.shape = (len(delta),1)
+		activations[-2].shape = (1,len(activations[-2]))
+		
+		nabla_b[-1] = delta
+		
+		print("delta shape: ", delta.shape)
+		print("a_-2 shape: ", activations[-2].shape)
+		nabla_w[-1] = np.dot(delta, activations[-2])
+		
+		
+		for l in range(2, self.num_layers):
 			z = zs[-l]
 			sp = sigmoid_prime(z)
 			delta = np.dot(self.weights[-l+1].transpose(), delta)*sp
@@ -237,7 +257,7 @@ class Network(object):
 		self.kappa = Criterion.criterion(self.last_input, self.new_input)
 		self.kappas.append[self.kappa]
 		
-		# Why is last_input == new_input? Self.new input is updated before 
+		# last_input == new_input temporarily. Self.new input is updated before
 		# we compare the two, so this is fine.
 		self.last_input = self.new_input
 		return (nabla_b, nabla_w)
@@ -294,8 +314,7 @@ def input_to_xy(input):
 	y = b2_to_b10(input[int(cols/2):])
 	
 	return x,y
-	
-	
+
 def plot_kappa(kappas):
 	"""Plot the list of kappas versus iterations in one epoch."""
 	x = plt.plot(kappas)
@@ -317,12 +336,12 @@ def plot_inputs(inputs):
 	plt.show(p)
 
 def sigmoid(z):
-    """The sigmoid function."""
-    return 1.0/(1.0+np.exp(-z))
+	"""The sigmoid function."""
+	return 1.0/(1.0+np.exp(-z))
 
 def sigmoid_prime(z):
-    """Derivative of the sigmoid function."""
-    return sigmoid(z)*(1-sigmoid(z))
+	"""Derivative of the sigmoid function."""
+	return sigmoid(z)*(1-sigmoid(z))
 	
 #### Implement some test code
 
